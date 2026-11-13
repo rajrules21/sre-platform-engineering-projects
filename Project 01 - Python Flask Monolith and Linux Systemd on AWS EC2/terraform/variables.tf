@@ -12,11 +12,11 @@ variable "instance_type" {
   default     = "t3.micro"
 }
 
-# Optional EC2 SSH Key Pair name created in your AWS Console
+# EC2 SSH Key Pair name created in your AWS Console
 variable "key_name" {
   type        = string
-  description = "AWS EC2 Key Pair name for SSH access (optional)"
-  default     = ""
+  description = "AWS EC2 Key Pair name for SSH access"
+  default     = "skills-tracker-key"
 }
 
 # Firewall rule: CIDR block allowed to connect to SSH port 22
