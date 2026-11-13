@@ -181,14 +181,17 @@ def debug_crash():
     Deliberate SRE Failure Drill Endpoint.
     Abruptly terminates the Python process with exit code 1 to test
     if Linux systemd automatically revives the service in production!
+    Uses os._exit(1) to bypass thread-level exception catches and force
+    immediate OS process termination.
     """
     app.logger.warning("DELIBERATE SRE DRILL: Terminating process with exit code 1.")
-    sys.exit(1)
+    os._exit(1)
 
 
 
-# Starts the local development server when run via 'python app.py'
+# Starts the server
 if __name__ == "__main__":
     port = int(os.getenv("PORT", 5000))
-    app.run(host="0.0.0.0", port=port, debug=True)
+    debug_mode = os.getenv("FLASK_DEBUG", "false").lower() == "true"
+    app.run(host="0.0.0.0", port=port, debug=debug_mode)
     
