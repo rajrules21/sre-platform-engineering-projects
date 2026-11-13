@@ -56,3 +56,26 @@ This document logs real and simulated SRE failure drills conducted during the li
 * **Prevention / Lessons Learned:**
   * Security Groups in AWS are **stateful** (inbound traffic automatically allows outbound return packets).
   * Always verify both AWS Security Groups (instance-level firewall) and local Linux OS firewalls (`ufw`) when diagnosing connectivity timeouts.
+
+---
+
+## Incident #03: Cloud-Init vs SSH Race Condition & Ephemeral Runner Resource Duplication
+* **Date & Severity:** 2026-11-13 | Severity: **Sev-2 (Deployment Failure & Cloud Resource Duplication)**
+* **Components Affected:** GitHub Actions CD Runner (`project-01.yml`), Ubuntu Cloud-Init (`user_data`), Linux Package Manager (`apt`), Terraform Local State (`terraform.tfstate`).
+* **Symptoms:**
+  * The GitHub Actions CD pipeline failed at the deployment step with `Process completed with exit code 7` (`curl: (7) Failed to connect to host: Connection refused`).
+  * Inspection of the deployment logs revealed: `ModuleNotFoundError: No module named 'flask'`.
+  * The AWS EC2 instance was left running in AWS, but the application was dead on port 80.
+  * Re-triggering the pipeline created a **second duplicate EC2 instance**, doubling running compute costs while leaving the first instance orphaned.
+* **Root Cause Analysis:**
+  1. **The Cloud-Init vs SSH Race Condition:** When AWS provisions an EC2 instance, SSH port 22 becomes reachable within 15–20 seconds. The GitHub Actions SSH action connected immediately and began executing deployment commands (`python3 -m venv`). Simultaneously, Linux `cloud-init` was running `apt-get install -y python3-pip python3-venv` in the background and holding the dpkg lock (`/var/lib/dpkg/lock-frontend`). Because the deployment script raced ahead before `python3-venv` had finished unpacking, it created a broken virtual environment lacking `pip` and dependencies. Flask failed to launch, leaving port 80 closed.
+  2. **Ephemeral Runner State Loss:** In GitHub Actions, each pipeline run boots on a brand-new, isolated virtual machine. Because Terraform had not yet been configured with a remote backend (Amazon S3 + DynamoDB state locking), the `terraform.tfstate` file was destroyed when the first runner exited. On the next push, Terraform checked its blank local state, concluded zero infrastructure existed in AWS, and provisioned a second duplicate EC2 instance.
+* **Mitigation / Fix:**
+  1. **OS Bootstrap Synchronization:** Injected `cloud-init status --wait` at the beginning of the SSH deployment script. This forces the deployment pipeline to block and poll until the OS bootstrap script has completed 100% of its package installations before executing application setup.
+  2. **Orphan Cleanup:** Queried `aws ec2 describe-instances` via AWS CLI and terminated the zombie instance (`i-0ec11981e45eaed61`).
+  3. **Architectural Gating:** Standardized that all future CI/CD pipelines (starting from Project 02) must use remote state storage with distributed locking to prevent duplicate cloud provisioning.
+* **Prevention / Lessons Learned:**
+  * An open SSH port only signals that `sshd` is running, not that the operating system has finished provisioning.
+  * CI/CD pipelines deploying directly to VMs must always synchronize with the OS bootstrap manager (`cloud-init status --wait`).
+  * Running Terraform in ephemeral CI runners with local state is an operational anti-pattern that leads to phantom cloud billing and resource drift.
+
