@@ -109,6 +109,9 @@ jobs:
           username: ubuntu
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
+            echo "=== Waiting for Cloud-Init bootstrap to complete ==="
+            cloud-init status --wait
+
             echo "=== Starting Automated Code Deployment ==="
             sudo mkdir -p /opt/skills-tracker/app
             sudo chown -R ubuntu:ubuntu /opt/skills-tracker
@@ -123,8 +126,8 @@ jobs:
 
             # Setup isolated production virtualenv and install dependencies
             python3 -m venv /opt/skills-tracker/venv
-            /opt/skills-tracker/venv/bin/pip install --upgrade pip
-            /opt/skills-tracker/venv/bin/pip install -r /opt/skills-tracker/app/requirements.txt
+            /opt/skills-tracker/venv/bin/python3 -m pip install --upgrade pip
+            /opt/skills-tracker/venv/bin/python3 -m pip install -r /opt/skills-tracker/app/requirements.txt
 
             # Reload systemd daemon, enable on boot, and restart service
             sudo systemctl daemon-reload
