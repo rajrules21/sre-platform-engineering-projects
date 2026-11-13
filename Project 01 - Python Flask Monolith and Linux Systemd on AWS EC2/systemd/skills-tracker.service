@@ -1,0 +1,27 @@
+[Unit]
+Description = SRE Skills Tracker - Python Flask Web Monolith
+After = network.target
+
+[Service]
+Type = simple
+User = ubuntu
+Group = ubuntu
+WorkingDirectory = /opt/skills-tracker/app
+
+ExecStart = /opt/skills-tracker/venv/bin/python3 app.py
+
+Restart = always
+RestartSec = 5s
+
+Environment = PORT=80
+Environment = DB_PATH=/opt/skills-tracker/app/skills.db
+Environment = PYTHONUNBUFFERED=1
+
+AmbientCapabilities = CAP_NET_BIND_SERVICE
+
+StandardOutput = journal
+StandardError = journal
+SyslogIdentifier = skills-tracker
+
+[Install]
+WantedBy = multi-user.target

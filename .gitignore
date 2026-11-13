@@ -1,0 +1,138 @@
+# ==============================================================================
+# SRE & Platform Engineering Portfolio .gitignore
+# Prevents cloud credentials, state files, and secrets from leaking to GitHub
+# ==============================================================================
+
+# --- Private Learning Logs & Notes ---
+questions_asked.md
+**/questions_asked.md
+AGENTS.md
+**/AGENTS.md
+
+# --- Archive & Internal Drafts ---
+old/
+**/old/
+
+# --- Master Curriculum & Prompt Generator ---
+00_PORTFOLIO_BLUEPRINT.md
+00_PROMPT_GENERATOR.md
+
+# --- Advanced Curriculum Track ---
+advanced/
+**/advanced/
+
+# --- Future Projects (Ignored until ready to be built & deployed) ---
+Project 02*
+Project 03*
+Project 04*
+Project 05*
+Project 06*
+Project 07*
+Project 08*
+Project 09*
+Project 10*
+Project 11*
+Project 12*
+
+# --- Terraform & IaC ---
+*.tfstate
+*.tfstate.*
+*.tfstate.backup
+*.tfplan
+.terraform/
+**/.terraform/
+.terraform.lock.hcl
+crash.log
+crash.*.log
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+terraform.tfvars
+terraform.tfvars.json
+
+# --- Cloud Credentials & Keys ---
+*.pem
+*.key
+*.pub
+*.pfx
+*.pkcs12
+id_rsa
+id_ed25519
+*.cer
+*.crt
+credentials
+credentials.json
+client_secrets.json
+service-account*.json
+gcp-key*.json
+azure_credentials.json
+
+# --- Environment & Secret Files ---
+.env
+.env.*
+!.env.example
+secrets/
+*.secret
+*.secrets
+
+# --- Python & Virtual Environments ---
+__pycache__/
+**/__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+**/env/
+venv/
+**/venv/
+.venv/
+**/.venv/
+ENV/
+**/ENV/
+env.bak/
+venv.bak/
+.pytest_cache/
+.coverage
+htmlcov/
+*.egg-info/
+
+# --- Golang ---
+bin/
+*.exe
+*.exe~
+*.dll
+*.dylib
+*.test
+*.out
+go.work
+
+# --- Databases & Local Storage ---
+*.sqlite
+*.sqlite3
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+
+# --- Kubernetes & Helm ---
+*.kubeconfig
+kubeconfig
+kubeconfig.yaml
+.helm/
+*.tgz
+
+# --- Logs ---
+*.log
+**/*.log
+
+# --- OS & Editor Metadata ---
+.DS_Store
+Thumbs.db
+desktop.ini
+.idea/
+.vscode/
+*.swp
+*.swo
+*~

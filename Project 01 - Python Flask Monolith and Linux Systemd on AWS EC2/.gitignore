@@ -1,0 +1,55 @@
+# ==============================================================================
+# Project 01: Python Flask Monolith & Linux Systemd on AWS EC2
+# Local .gitignore
+# ==============================================================================
+
+# Private Learning Log
+questions_asked.md
+learning/questions_asked.md
+AGENTS.md
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+.venv/
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Local SQLite Database
+*.db
+*.sqlite
+*.sqlite3
+app/skills.db
+
+# Terraform
+*.tfstate
+*.tfstate.*
+*.tfstate.backup
+*.tfplan
+.terraform/
+.terraform.lock.hcl
+crash.log
+crash.*.log
+terraform.tfvars
+terraform.tfvars.json
+
+# Keys and Credentials
+*.pem
+*.key
+*.pub
+id_rsa
+id_ed25519
+
+# Environment and Secrets
+.env
+.env.*
+!.env.example
+
+# Logs
+*.log

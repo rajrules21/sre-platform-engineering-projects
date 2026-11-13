@@ -1,0 +1,142 @@
+name: "Project 01: CI/CD Pipeline (Flask + EC2)"
+
+# ==============================================================================
+# Pipeline Triggers: Defines when this CI/CD workflow runs
+# ==============================================================================
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+    branches: ["main"]
+  workflow_dispatch: # Allows manual trigger from GitHub UI
+
+jobs:
+  # ============================================================================
+  # STAGE 1: Continuous Integration (CI) - Quality Gate
+  # Runs linting, automated unit tests, and validates Terraform IaC syntax
+  # ============================================================================
+  ci:
+    name: "CI: Lint, Test & Validate IaC"
+    runs-on: ubuntu-latest
+
+    steps:
+      # Step 1: Check out repository source code
+      - name: "Checkout Code"
+        uses: actions/checkout@v4
+
+      # Step 2: Set up Python 3.12 runtime with pip caching
+      - name: "Set up Python 3.12"
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+
+      # Step 3: Install production and development dependencies
+      - name: "Install Python Dependencies"
+        run: |
+          python -m pip install --upgrade pip
+          cd "Project 01 - Python Flask Monolith and Linux Systemd on AWS EC2/app"
+          pip install -r requirements.txt -r requirements-dev.txt
+
+      # Step 4: Run Flake8 linter for PEP8 compliance and syntax errors
+      - name: "Run Flake8 Linter"
+        run: |
+          cd "Project 01 - Python Flask Monolith and Linux Systemd on AWS EC2/app"
+          flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+          flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+
+      # Step 5: Execute automated unit test suite
+      - name: "Run Unit Tests"
+        run: |
+          cd "Project 01 - Python Flask Monolith and Linux Systemd on AWS EC2/app"
+          python -m unittest tests/test_app.py -v
+
+      # Step 6: Install HashiCorp Terraform CLI
+      - name: "Set up Terraform"
+        uses: hashicorp/setup-terraform@v3
+
+      # Step 7: Validate Terraform code formatting and HCL syntax
+      - name: "Validate Terraform IaC"
+        run: |
+          cd "Project 01 - Python Flask Monolith and Linux Systemd on AWS EC2/terraform"
+          terraform fmt -check
+          terraform init -backend=false
+          terraform validate
+
+  # ============================================================================
+  # STAGE 2: Continuous Deployment (CD) - Cloud Infrastructure & Monolith Deploy
+  # Gated by `needs: [ci]` - Only runs if CI passes 100% on the main branch
+  # ============================================================================
+  cd:
+    name: "CD: Deploy Infrastructure & Monolith to AWS"
+    needs: [ci]
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+
+    steps:
+      # Step 1: Check out repository code
+      - name: "Checkout Code"
+        uses: actions/checkout@v4
+
+      # Step 2: Authenticate securely to AWS using GitHub Secrets
+      - name: "Configure AWS Credentials"
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      # Step 3: Install HashiCorp Terraform CLI
+      - name: "Set up Terraform"
+        uses: hashicorp/setup-terraform@v3
+
+      # Step 4: Initialize and Apply Terraform (creates VPC, SG, and EC2)
+      - name: "Terraform Init & Apply"
+        id: terraform
+        run: |
+          cd "Project 01 - Python Flask Monolith and Linux Systemd on AWS EC2/terraform"
+          terraform init
+          terraform apply -auto-approve
+          SERVER_IP=$(terraform output -raw instance_public_ip)
+          echo "SERVER_IP=$SERVER_IP" >> $GITHUB_ENV
+          echo "Server Public IP: $SERVER_IP"
+
+      # Step 5: SSH into EC2 server, sync application code, and restart Systemd service
+      - name: "Deploy to EC2 via SSH"
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ env.SERVER_IP }}
+          username: ubuntu
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            echo "=== Starting Automated Code Deployment ==="
+            sudo mkdir -p /opt/skills-tracker/app
+            sudo chown -R ubuntu:ubuntu /opt/skills-tracker
+
+            # Clone or update application source code
+            if [ ! -d "/opt/skills-tracker/.git" ]; then
+              git clone https://github.com/${{ github.repository }}.git /tmp/repo
+              cp -r "/tmp/repo/Project 01 - Python Flask Monolith and Linux Systemd on AWS EC2/app/"* /opt/skills-tracker/app/
+              sudo cp "/tmp/repo/Project 01 - Python Flask Monolith and Linux Systemd on AWS EC2/systemd/skills-tracker.service" /etc/systemd/system/
+              rm -rf /tmp/repo
+            fi
+
+            # Setup isolated production virtualenv and install dependencies
+            python3 -m venv /opt/skills-tracker/venv
+            /opt/skills-tracker/venv/bin/pip install --upgrade pip
+            /opt/skills-tracker/venv/bin/pip install -r /opt/skills-tracker/app/requirements.txt
+
+            # Reload systemd daemon, enable on boot, and restart service
+            sudo systemctl daemon-reload
+            sudo systemctl enable skills-tracker
+            sudo systemctl restart skills-tracker
+            sudo systemctl status skills-tracker --no-pager
+
+      # Step 6: Post-Deployment Smoke Test (Black-Box Health Verification)
+      - name: "Post-Deployment Smoke Test"
+        run: |
+          echo "Waiting 10 seconds for Flask to initialize..."
+          sleep 10
+          echo "Running health check against: http://${{ env.SERVER_IP }}/healthz"
+          curl -f --retry 5 --retry-delay 3 http://${{ env.SERVER_IP }}/healthz
+          echo "Smoke test passed! Application is live."
