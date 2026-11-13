@@ -2,7 +2,7 @@
 variable "aws_region" {
   type        = string
   description = "AWS region for deployment"
-  default     = "us-east-1"
+  default     = "ap-south-1"
 }
 
 # EC2 Compute instance sizing (t3.micro has 2 vCPUs, 1 GiB RAM, Free Tier eligible)
